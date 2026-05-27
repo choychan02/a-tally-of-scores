@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수련회 점수 집계</title>
+<style>
+  :root {
+    --ink: #1a2238;
+    --paper: #f4f1e8;
+    --gold: #d4a23c;
+    --gold-deep: #b3852a;
+    --crimson: #9c2c2c;
+    --slate: #5a6378;
+    --line: #d8d2c0;
+    --card: #fffdf6;
+    --green: #3f7d4f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(212,162,60,0.10), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(156,44,44,0.08), transparent 42%),
+      var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 28px 18px 80px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  header {
+    text-align: center;
+    padding: 14px 0 26px;
+    border-bottom: 3px double var(--ink);
+    margin-bottom: 26px;
+  }
+  header .kicker {
+    font-size: 13px; letter-spacing: 6px; color: var(--gold-deep);
+    font-weight: 700; text-transform: uppercase;
+  }
+  header h1 {
+    font-size: 38px; font-weight: 800; margin: 6px 0 4px;
+    letter-spacing: -1px;
+  }
+  header .sub { font-size: 14px; color: var(--slate); }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 22px;
+    box-shadow: 0 6px 22px rgba(26,34,56,0.06);
+  }
+  .panel h2 {
+    font-size: 15px; letter-spacing: 2px; color: var(--crimson);
+    text-transform: uppercase; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel h2::before {
+    content: ""; width: 18px; height: 3px; background: var(--gold);
+    display: inline-block;
+  }
+
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  input[type=text], input[type=number], select {
+    font-family: inherit; font-size: 15px;
+    padding: 9px 12px; border: 1.5px solid var(--line);
+    border-radius: 8px; background: #fff; color: var(--ink);
+  }
+  input:focus, select:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+
+  button {
+    font-family: inherit; cursor: pointer; font-weight: 700;
+    border: none; border-radius: 8px; padding: 9px 16px; font-size: 14px;
+    transition: transform .08s ease, filter .15s ease;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary { background: var(--ink); color: var(--paper); }
+  .btn-gold { background: var(--gold); color: var(--ink); }
+  .btn-ghost { background: transparent; color: var(--slate); border: 1.5px solid var(--line); }
+  .btn-danger { background: transparent; color: var(--crimson); border: 1.5px solid var(--crimson); padding: 5px 10px; font-size: 12px; }
+  button:hover { filter: brightness(1.06); }
+
+  .chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 20px; padding: 6px 10px 6px 14px;
+    display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600;
+  }
+  .chip button {
+    background: none; color: var(--slate); padding: 0 4px; font-size: 16px;
+    line-height: 1;
+  }
+  .chip button:hover { color: var(--crimson); }
+  .empty { color: var(--slate); font-size: 14px; font-style: italic; }
+
+  /* 점수 입력 그리드 */
+  .score-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .score-table th, .score-table td {
+    padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--line);
+  }
+  .score-table th {
+    font-size: 12px; letter-spacing: 1px; color: var(--slate);
+    text-transform: uppercase; font-weight: 700;
+  }
+  .score-table td:first-child, .score-table th:first-child {
+    text-align: left; font-weight: 700; padding-left: 4px;
+  }
+  .score-table input[type=number] {
+    width: 70px; text-align: center; padding: 6px 4px; font-size: 14px;
+  }
+  .score-table tfoot td, .score-table .total-col {
+    font-weight: 800; color: var(--crimson);
+  }
+
+  /* 순위판 */
+  .board { display: flex; flex-direction: column; gap: 10px; }
+  .rank-row {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    align-items: center; gap: 16px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px 18px;
+    transition: all .35s cubic-bezier(.4,0,.2,1);
+  }
+  .rank-row .medal {
+    font-size: 26px; font-weight: 800; text-align: center;
+  }
+  .rank-row .team-name { font-size: 19px; font-weight: 700; }
+  .rank-row .breakdown { font-size: 12px; color: var(--slate); margin-top: 2px; }
+  .rank-row .score {
+    font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums;
+  }
+  .rank-row.r1 {
+    background: linear-gradient(100deg, #fff8e3, var(--card));
+    border-color: var(--gold); box-shadow: 0 6px 20px rgba(212,162,60,0.22);
+  }
+  .rank-row.r1 .medal, .rank-row.r1 .score { color: var(--gold-deep); }
+  .rank-row.r2 { border-color: #b9bcc4; }
+  .rank-row.r2 .medal { color: #8d9099; }
+  .rank-row.r3 { border-color: #cbb190; }
+  .rank-row.r3 .medal { color: #a9824f; }
+
+  .bar-wrap { grid-column: 1 / -1; height: 6px; background: var(--paper);
+    border-radius: 4px; overflow: hidden; margin-top: 4px; }
+  .bar { height: 100%; background: linear-gradient(90deg, var(--gold), var(--crimson));
+    border-radius: 4px; transition: width .5s ease; }
+
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+
+  footer { text-align: center; color: var(--slate); font-size: 12px; margin-top: 30px; }
+
+  @media (max-width: 620px) {
+    header h1 { font-size: 28px; }
+    .rank-row { grid-template-columns: 44px 1fr auto; padding: 12px; }
+    .score-table { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">Retreat Scoreboard</div>
+    <h1>수련회 점수 집계</h1>
+    <div class="sub">활동 점수와 응원 점수를 입력하면 순위가 자동으로 계산됩니다</div>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn-ghost" onclick="exportData()">데이터 내보내기</button>
+    <button class="btn-ghost" onclick="document.getElementById('importFile').click()">데이터 불러오기</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="btn-ghost" onclick="resetAll()">전체 초기화</button>
+  </div>
+
+  <!-- 조 관리 -->
+  <div class="panel">
+    <h2>조 등록</h2>
+    <div class="row">
+      <input type="text" id="teamInput" placeholder="조 이름 (예: 1조, 사랑조)" onkeydown="if(event.key==='Enter')addTeam()">
+      <button class="btn-primary" onclick="addTeam()">조 추가</button>
+    </div>
+    <div class="chip-list" id="teamList"></div>
+  </div>
+
+  <!-- 활동 관리 -->
+  <div class="panel">
+    <h2>활동 항목</h2>
+    <div class="row">
+      <input type="text" id="actInput" placeholder="활동 이름 (예: 보물찾기, 장기자랑)" onkeydown="if(event.key==='Enter')addActivity()">
+      <button class="btn-primary" onclick="addActivity()">활동 추가</button>
+    </div>
+    <div class="chip-list" id="actList"></div>
+  </div>
+
+  <!-- 점수 입력 -->
+  <div class="panel">
+    <h2>점수 입력</h2>
+    <div id="scoreArea"></div>
+  </div>
+
+  <!-- 순위판 -->
+  <div class="panel">
+    <h2>실시간 순위</h2>
+    <div class="board" id="board"></div>
+  </div>
+
+  <footer>점수는 이 브라우저에 자동 저장됩니다 · 큰 화면에 띄워두면 순위가 실시간으로 갱신됩니다</footer>
+</div>
+
+<script>
+/* ===== 데이터 ===== */
+let state = {
+  teams: [],        // ['1조','2조',...]
+  activities: [],   // ['보물찾기',...]  (응원점수는 항상 별도 고정 항목)
+  scores: {}        // scores[team][activity] = 숫자,  scores[team].__cheer = 응원점수
+};
+
+const STORE_KEY = 'retreat_scoreboard_v1';
+
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) state = JSON.parse(raw);
+  } catch(e) {}
+}
+
+/* ===== 조 ===== */
+function addTeam() {
+  const el = document.getElementById('teamInput');
+  const name = el.value.trim();
+  if (!name) return;
+  if (state.teams.includes(name)) { alert('이미 등록된 조입니다.'); return; }
+  state.teams.push(name);
+  state.scores[name] = { __cheer: 0 };
+  el.value = '';
+  el.focus();
+  render();
+}
+function removeTeam(name) {
+  if (!confirm('"' + name + '" 조를 삭제할까요? 점수도 함께 삭제됩니다.')) return;
+  state.teams = state.teams.filter(t => t !== name);
+  delete state.scores[name];
+  render();
+}
+
+/* ===== 활동 ===== */
+function addActivity() {
+  const el = document.getElementById('actInput');
+  const name = el.value.trim();
+  if (!name) return;
+  if (state.activities.includes(name)) { alert('이미 등록된 활동입니다.'); return; }
+  state.activities.push(name);
+  el.value = '';
+  el.focus();
+  render();
+}
+function removeActivity(name) {
+  if (!confirm('"' + name + '" 활동을 삭제할까요? 관련 점수도 삭제됩니다.')) return;
+  state.activities = state.activities.filter(a => a !== name);
+  state.teams.forEach(t => { if (state.scores[t]) delete state.scores[t][name]; });
+  render();
+}
+
+/* ===== 점수 입력 ===== */
+function setScore(team, key, value) {
+  const n = parseFloat(value);
+  if (!state.scores[team]) state.scores[team] = { __cheer: 0 };
+  state.scores[team][key] = isNaN(n) ? 0 : n;
+  save();
+  renderBoard();   // 순위만 갱신 (입력 포커스 유지)
+}
+
+function teamTotal(team) {
+  const s = state.scores[team] || {};
+  let sum = s.__cheer || 0;
+  state.activities.forEach(a => { sum += s[a] || 0; });
+  return sum;
+}
+function activitySum(team) {
+  const s = state.scores[team] || {};
+  let sum = 0;
+  state.activities.forEach(a => { sum += s[a] || 0; });
+  return sum;
+}
+
+/* ===== 렌더링 ===== */
+function renderChips() {
+  const tl = document.getElementById('teamList');
+  tl.innerHTML = state.teams.length ? '' : '<span class="empty">아직 등록된 조가 없습니다.</span>';
+  state.teams.forEach(t => {
+    const c = document.createElement('div');
+    c.className = 'chip';
+    c.innerHTML = '<span></span><button title="삭제">×</button>';
+    c.querySelector('span').textContent = t;
+    c.querySelector('button').onclick = () => removeTeam(t);
+    tl.appendChild(c);
+  });
+
+  const al = document.getElementById('actList');
+  al.innerHTML = state.activities.length ? '' : '<span class="empty">아직 등록된 활동이 없습니다.</span>';
+  state.activities.forEach(a => {
+    const c = document.createElement('div');
+    c.className = 'chip';
+    c.innerHTML = '<span></span><button title="삭제">×</button>';
+    c.querySelector('span').textContent = a;
+    c.querySelector('button').onclick = () => removeActivity(a);
+    al.appendChild(c);
+  });
+}
+
+function renderScoreTable() {
+  const area = document.getElementById('scoreArea');
+  if (!state.teams.length) {
+    area.innerHTML = '<span class="empty">먼저 조를 등록해 주세요.</span>';
+    return;
+  }
+  let html = '<table class="score-table"><thead><tr><th>조</th>';
+  state.activities.forEach(a => { html += '<th>' + escapeHtml(a) + '</th>'; });
+  html += '<th>응원 점수</th><th class="total-col">합계</th></tr></thead><tbody>';
+
+  state.teams.forEach(t => {
+    const s = state.scores[t] || { __cheer: 0 };
+    html += '<tr><td>' + escapeHtml(t) + '</td>';
+    state.activities.forEach(a => {
+      const v = s[a] || 0;
+      html += '<td><input type="number" step="any" value="' + v +
+              '" oninput="setScore(\'' + esc(t) + '\',\'' + esc(a) + '\',this.value)"></td>';
+    });
+    const cheer = s.__cheer || 0;
+    html += '<td><input type="number" step="any" value="' + cheer +
+            '" oninput="setScore(\'' + esc(t) + '\',\'__cheer\',this.value)"></td>';
+    html += '<td class="total-col" id="tot-' + esc(t) + '">' + teamTotal(t) + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  area.innerHTML = html;
+}
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  if (!state.teams.length) {
+    board.innerHTML = '<span class="empty">조를 등록하면 순위가 표시됩니다.</span>';
+    return;
+  }
+  // 합계 칸 갱신
+  state.teams.forEach(t => {
+    const cell = document.getElementById('tot-' + cssId(t));
+    if (cell) cell.textContent = teamTotal(t);
+  });
+
+  const ranked = state.teams.map(t => ({
+    name: t, total: teamTotal(t),
+    act: activitySum(t), cheer: (state.scores[t] || {}).__cheer || 0
+  })).sort((a, b) => b.total - a.total);
+
+  const max = Math.max(1, ...ranked.map(r => r.total));
+  const medals = ['1', '2', '3'];
+
+  board.innerHTML = '';
+  ranked.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'rank-row' + (i < 3 ? ' r' + (i + 1) : '');
+    const medal = i < 3 ? medals[i] : (i + 1);
+    const pct = Math.max(2, (r.total / max) * 100);
+    row.innerHTML =
+      '<div class="medal">' + medal + '</div>' +
+      '<div><div class="team-name"></div>' +
+      '<div class="breakdown">활동 ' + r.act + ' + 응원 ' + r.cheer + '</div></div>' +
+      '<div class="score">' + r.total + '</div>' +
+      '<div class="bar-wrap"><div class="bar" style="width:' + pct + '%"></div></div>';
+    row.querySelector('.team-name').textContent = r.name;
+    board.appendChild(row);
+  });
+}
+
+function render() {
+  renderChips();
+  renderScoreTable();
+  renderBoard();
+  save();
+}
+
+/* ===== 유틸 ===== */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function esc(s) { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+function cssId(s) { return s; }
+
+/* ===== 내보내기 / 불러오기 / 초기화 ===== */
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '수련회_점수_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      state = JSON.parse(reader.result);
+      render();
+      alert('데이터를 불러왔습니다.');
+    } catch(err) { alert('파일을 읽을 수 없습니다.'); }
+  };
+  reader.readAsText(file);
+}
+function resetAll() {
+  if (!confirm('모든 조, 활동, 점수를 삭제할까요? 되돌릴 수 없습니다.')) return;
+  state = { teams: [], activities: [], scores: {} };
+  render();
+}
+
+/* ===== 시작 ===== */
+load();
+render();
+</script>
+</body>
+</html>
